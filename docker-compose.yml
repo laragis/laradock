@@ -57,6 +57,7 @@ services:
 
 ### Workspace Utilities ##################################
     workspace:
+      image: ttungbmt/laradock-workspace:${PHP_VERSION}
       build:
         context: ./workspace
         args:
@@ -209,6 +210,7 @@ services:
 
 ### PHP-FPM ##############################################
     php-fpm:
+      image: ttungbmt/laradock-php-fpm:${PHP_VERSION}
       build:
         context: ./php-fpm
         args:
@@ -421,6 +423,7 @@ services:
 
 ### NGINX Server #########################################
     nginx:
+      image: ttungbmt/laradock-nginx
       build:
         context: ./nginx
         args:
@@ -599,7 +602,7 @@ services:
           - no_proxy
           - MARIADB_VERSION=${MARIADB_VERSION}
       volumes:
-        - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql
+        # - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql
         - ${MARIADB_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       ports:
         - "${MARIADB_PORT}:3306"

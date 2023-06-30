@@ -1,0 +1,19 @@
+# upstream php-upstream { 
+#     server php-fpm:9000; 
+# }
+
+# upstream php8.2-upstream { 
+#     server php8.2-fpm:9000; 
+# }
+
+# upstream php8.1-upstream { 
+#     server php8.1-fpm:9000; 
+# }
+
+# upstream php8.0-upstream { 
+#     server php8.0-fpm:9000; 
+# }
+
+# upstream php7.4-upstream { 
+#     server php7.4-fpm:9000; 
+# }
