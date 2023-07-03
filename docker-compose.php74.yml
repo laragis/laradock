@@ -1,0 +1,30 @@
+x-share:
+  common: &default-common
+    build:
+        context: ./workspace
+        args:
+          - LARADOCK_PHP_VERSION=7.4
+
+services:
+
+### Workspace Utilities ##################################
+    workspace:
+      <<: *default-common
+      image: ttungbmt/laradock-workspace:7.4
+   
+### PHP-FPM ##############################################
+    php-fpm:
+      <<: *default-common
+      image: ttungbmt/laradock-php-fpm:7.4
+    
+
+### PHP Worker ############################################
+    php-worker:
+      <<: *default-common
+      image: ttungbmt/laradock-php-worker:7.4
+     
+
+### Laravel Horizon ############################################
+    laravel-horizon:
+      <<: *default-common
+      image: ttungbmt/laradock-laravel-horizon:7.4
