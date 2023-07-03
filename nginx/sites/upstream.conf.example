@@ -1,0 +1,3 @@
+upstream php81-upstream { 
+    server php-fpm-81:9000; 
+}

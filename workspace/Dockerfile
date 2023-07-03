@@ -74,8 +74,8 @@ RUN set -xe; \
       php -m | grep -q 'zip'
 
 
-RUN mkdir -p /home/laradock/.local && \
-    chown -R laradock:laradock /home/laradock/.local
+RUN mkdir -p /home/laradock/.local/share && \
+    chown -R laradock:laradock /home/laradock/.local/share
     
 #
 #--------------------------------------------------------------------------
@@ -1203,12 +1203,14 @@ RUN if [ ${INSTALL_PYTHON} = true ]; then \
 ARG INSTALL_PYTHON3=true
 
 RUN if [ ${INSTALL_PYTHON3} = true ]; then \
-  apt-get -y install python3 python3-dev build-essential  \
-  && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py  \
-  && python3 get-pip.py  \
-  && rm get-pip.py  \
-  && python3 -m pip install --upgrade --force-reinstall pip  \
-  && python3 -m pip install --upgrade virtualenv \
+  add-apt-repository -y ppa:deadsnakes/ppa && \
+  apt-get update -y && \
+  apt-get -y install \
+    python3 build-essential python-is-python3 \
+    python3-dev python3-pip python3-setuptools \
+    python3-psycopg2 python3-ldap \
+    python3-pil python3-lxml python3-pylibmc \
+  && python3 -m pip install --upgrade virtualenv poetry invoke cookiecutter django \
 ;fi
 
 ###########################################################################
@@ -1612,6 +1614,7 @@ ARG SHELL_OH_MY_ZSH_COMPLETIONS=true
 ARG SHELL_OH_MY_ZSH_YOU_SHOULD_USE=true
 ARG SHELL_OH_MY_ZSH_ALIASES=true
 
+
 USER laradock
 RUN if [ ${SHELL_OH_MY_ZSH} = true ]; then \
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) --keep-zshrc" && \
@@ -1636,7 +1639,7 @@ bindkey "^?" backward-delete-char\n' >> /home/laradock/.zshrc && \
     echo "zinit light zsh-users/zsh-syntax-highlighting" >> /home/laradock/.zshrc \
   ;fi && \
   if [ ${SHELL_OH_MY_ZSH_AUTOSUGESTIONS} = true ]; then \
-    echo "zinit light zsh-users/zsh-autosuggestions" >> /home/laradock/.zshrc \
+    echo "zinit light zsh-users/zsh-autosuggestions" >> /home/laradock/.zshrc &&\
     sed -i '1iZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20' /home/laradock/.zshrc && \
     sed -i '1iZSH_AUTOSUGGEST_STRATEGY=(history completion)' /home/laradock/.zshrc && \
     sed -i '1iZSH_AUTOSUGGEST_USE_ASYNC=1' /home/laradock/.zshrc && \
@@ -1689,163 +1692,179 @@ RUN if [ ${SHELL_OH_MY_ZSH} = true ]; then \
 USER root
 
 
-# ###########################################################################
-# # PHP DECIMAL:
-# ###########################################################################
+###########################################################################
+# PHP DECIMAL:
+###########################################################################
 
-# USER root
+USER root
 
-# ARG INSTALL_PHPDECIMAL=false
+ARG INSTALL_PHPDECIMAL=false
 
-# RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
-#     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-#       echo 'decimal not support PHP 5.6'; \
-#     else \
-#       apt-get install -yqq libmpdec-dev \
-#       && pecl install decimal \
-#       && echo "extension=decimal.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/decimal.ini \
-#       && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/decimal.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-decimal.ini \
-#       && php -m | grep -q 'decimal' \
-#     ;fi \
-# ;fi
+RUN if [ ${INSTALL_PHPDECIMAL} = true ]; then \
+    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
+      echo 'decimal not support PHP 5.6'; \
+    else \
+      apt-get install -yqq libmpdec-dev \
+      && pecl install decimal \
+      && echo "extension=decimal.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/decimal.ini \
+      && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/decimal.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-decimal.ini \
+      && php -m | grep -q 'decimal' \
+    ;fi \
+;fi
 
-# ###########################################################################
-# # zookeeper
-# ###########################################################################
-# ARG INSTALL_ZOOKEEPER=false
+###########################################################################
+# zookeeper
+###########################################################################
+ARG INSTALL_ZOOKEEPER=false
 
-# RUN set -eux; \
-#     if [ ${INSTALL_ZOOKEEPER} = true ]; then \
-#     apt install -yqq libzookeeper-mt-dev; \
-#     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
-#       curl -L -o /tmp/php-zookeeper.tar.gz https://github.com/php-zookeeper/php-zookeeper/archive/master.tar.gz; \
-#       mkdir -p /tmp/php-zookeeper; \
-#       tar -C /tmp/php-zookeeper -zxvf /tmp/php-zookeeper.tar.gz --strip 1; \
-#       cd /tmp/php-zookeeper; \
-#       phpize && ./configure && make && make install;\
-#     else \
-#       if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-#         pecl install zookeeper-0.5.0; \
-#       else \
-#         pecl install zookeeper-0.7.2; \
-#       fi; \
-#     fi; \
-#     echo "extension=zookeeper.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini; \
-#     ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-zookeeper.ini; \
-#     php -m | grep -q 'zookeeper'; \
-#     fi
+RUN set -eux; \
+    if [ ${INSTALL_ZOOKEEPER} = true ]; then \
+    apt install -yqq libzookeeper-mt-dev; \
+    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "8" ]; then \
+      curl -L -o /tmp/php-zookeeper.tar.gz https://github.com/php-zookeeper/php-zookeeper/archive/master.tar.gz; \
+      mkdir -p /tmp/php-zookeeper; \
+      tar -C /tmp/php-zookeeper -zxvf /tmp/php-zookeeper.tar.gz --strip 1; \
+      cd /tmp/php-zookeeper; \
+      phpize && ./configure && make && make install;\
+    else \
+      if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
+        pecl install zookeeper-0.5.0; \
+      else \
+        pecl install zookeeper-0.7.2; \
+      fi; \
+    fi; \
+    echo "extension=zookeeper.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini; \
+    ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zookeeper.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-zookeeper.ini; \
+    php -m | grep -q 'zookeeper'; \
+    fi
 
-# ###########################################################################
-# # PHP SSDB:
-# ###########################################################################
+###########################################################################
+# PHP SSDB:
+###########################################################################
 
-# USER root
+USER root
 
-# ARG INSTALL_SSDB=false
+ARG INSTALL_SSDB=false
 
-# RUN set -xe; \
-#     if [ ${INSTALL_SSDB} = true ] && [ $(php -r "echo PHP_MAJOR_VERSION;") != "8" ]; then \
-#     apt-get -y install sudo wget && \
-#     if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
-#       curl -L -o /tmp/ssdb-client-php.tar.gz https://github.com/jonnywang/phpssdb/archive/php7.tar.gz; \
-#     else \
-#       curl -L -o /tmp/ssdb-client-php.tar.gz https://github.com/jonnywang/phpssdb/archive/master.tar.gz; \
-#     fi \
-#     && mkdir -p /tmp/ssdb-client-php \
-#     && tar -C /tmp/ssdb-client-php -zxvf /tmp/ssdb-client-php.tar.gz --strip 1 \
-#     && cd /tmp/ssdb-client-php \
-#     && phpize \
-#     && ./configure \
-#     && make \
-#     && make install \
-#     && rm /tmp/ssdb-client-php.tar.gz \
-#     && docker-php-ext-enable ssdb \
-# ;fi
+RUN set -xe; \
+    if [ ${INSTALL_SSDB} = true ] && [ $(php -r "echo PHP_MAJOR_VERSION;") != "8" ]; then \
+    apt-get -y install sudo wget && \
+    if [ $(php -r "echo PHP_MAJOR_VERSION;") = "7" ]; then \
+      curl -L -o /tmp/ssdb-client-php.tar.gz https://github.com/jonnywang/phpssdb/archive/php7.tar.gz; \
+    else \
+      curl -L -o /tmp/ssdb-client-php.tar.gz https://github.com/jonnywang/phpssdb/archive/master.tar.gz; \
+    fi \
+    && mkdir -p /tmp/ssdb-client-php \
+    && tar -C /tmp/ssdb-client-php -zxvf /tmp/ssdb-client-php.tar.gz --strip 1 \
+    && cd /tmp/ssdb-client-php \
+    && phpize \
+    && ./configure \
+    && make \
+    && make install \
+    && rm /tmp/ssdb-client-php.tar.gz \
+    && docker-php-ext-enable ssdb \
+;fi
 
-# #####################################
-# # trader:
-# #####################################
+#####################################
+# trader:
+#####################################
 
-# USER root
+USER root
 
-# ARG INSTALL_TRADER=false
+ARG INSTALL_TRADER=false
 
-# RUN if [ ${INSTALL_TRADER} = true ]; then \
-#     pecl install trader \
-#     && echo "extension=trader.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/trader.ini \
-#     && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/trader.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-trader.ini \
-# ;fi
+RUN if [ ${INSTALL_TRADER} = true ]; then \
+    pecl install trader \
+    && echo "extension=trader.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/trader.ini \
+    && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/trader.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-trader.ini \
+;fi
 
-# #
-# #--------------------------------------------------------------------------
-# # zmq
-# #--------------------------------------------------------------------------
-# #
+#
+#--------------------------------------------------------------------------
+# zmq
+#--------------------------------------------------------------------------
+#
 
-# USER root
+USER root
 
-# ARG INSTALL_ZMQ=false
+ARG INSTALL_ZMQ=false
 
-# RUN if [ ${INSTALL_ZMQ} = true ]; then \
-#     apt-get install --yes git libzmq3-dev \
-#     && git clone https://github.com/zeromq/php-zmq.git \
-#     && cd php-zmq \
-#     && phpize \
-#     && ./configure \
-#     && make \
-#     && make install \
-#     && cd .. \
-#     && rm -fr php-zmq \
-#     && echo "extension=zmq.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zmq.ini \
-#     && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zmq.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-zmq.ini \
-# ;fi
+RUN if [ ${INSTALL_ZMQ} = true ]; then \
+    apt-get install --yes git libzmq3-dev \
+    && git clone https://github.com/zeromq/php-zmq.git \
+    && cd php-zmq \
+    && phpize \
+    && ./configure \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -fr php-zmq \
+    && echo "extension=zmq.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zmq.ini \
+    && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/zmq.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-zmq.ini \
+;fi
 
-# ############################################################################
-# ## Event:
-# ############################################################################
-# USER root
+############################################################################
+## Event:
+############################################################################
+USER root
 
-# ARG INSTALL_EVENT=false
+ARG INSTALL_EVENT=false
 
-# RUN set -eux; \
-#   if [ ${INSTALL_EVENT} = true ]; then \
-#       curl -L -o  /tmp/libevent.tar.gz https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz   &&\
-#       mkdir -p /tmp/libevent-php &&\
-#       tar -C /tmp/libevent-php -zxvf /tmp/libevent.tar.gz --strip 1 &&\
-#       cd /tmp/libevent-php &&\
-#       ./configure --prefix=/usr/local/libevent-2.1.12  &&\
-#       make &&\
-#       make install &&\
-#       rm /tmp/libevent.tar.gz &&\
-#       if [ ! -f /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini ]; then\
-#         echo "extension=sockets.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini; \
-#       fi &&\
-#       ln -sf /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-sockets.ini && \
-#       curl -L -o /tmp/event.tar.gz http://pecl.php.net/get/event-3.0.6.tgz &&\
-#       mkdir -p /tmp/event-php &&\
-#       tar -C /tmp/event-php -zxvf /tmp/event.tar.gz --strip 1 &&\
-#       cd /tmp/event-php &&\
-#       phpize &&\
-#       ./configure  --with-event-libevent-dir=/usr/local/libevent-2.1.12/ &&\
-#       make &&\
-#       make install &&\
-#       rm /tmp/event.tar.gz &&\
-#       echo "extension=event.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/event.ini && \
-#       ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/event.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-event.ini && \
-#       php -m  | grep -q 'event' \
-# ;fi
+RUN set -eux; \
+  if [ ${INSTALL_EVENT} = true ]; then \
+      curl -L -o  /tmp/libevent.tar.gz https://github.com/libevent/libevent/releases/download/release-2.1.12-stable/libevent-2.1.12-stable.tar.gz   &&\
+      mkdir -p /tmp/libevent-php &&\
+      tar -C /tmp/libevent-php -zxvf /tmp/libevent.tar.gz --strip 1 &&\
+      cd /tmp/libevent-php &&\
+      ./configure --prefix=/usr/local/libevent-2.1.12  &&\
+      make &&\
+      make install &&\
+      rm /tmp/libevent.tar.gz &&\
+      if [ ! -f /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini ]; then\
+        echo "extension=sockets.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini; \
+      fi &&\
+      ln -sf /etc/php/${LARADOCK_PHP_VERSION}/mods-available/sockets.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/20-sockets.ini && \
+      curl -L -o /tmp/event.tar.gz http://pecl.php.net/get/event-3.0.6.tgz &&\
+      mkdir -p /tmp/event-php &&\
+      tar -C /tmp/event-php -zxvf /tmp/event.tar.gz --strip 1 &&\
+      cd /tmp/event-php &&\
+      phpize &&\
+      ./configure  --with-event-libevent-dir=/usr/local/libevent-2.1.12/ &&\
+      make &&\
+      make install &&\
+      rm /tmp/event.tar.gz &&\
+      echo "extension=event.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/event.ini && \
+      ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/event.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-event.ini && \
+      php -m  | grep -q 'event' \
+;fi
 
-# ###########################################################################
-# # DNS utilities:
-# ###########################################################################
+###########################################################################
+# DNS utilities:
+###########################################################################
 
-# USER root
+USER root
 
-# ARG INSTALL_DNSUTILS=false
+ARG INSTALL_DNSUTILS=false
 
-# RUN if [ ${INSTALL_DNSUTILS} = true ]; then \
-#     apt-get update && apt-get install -y dnsutils \
-# ;fi
+RUN if [ ${INSTALL_DNSUTILS} = true ]; then \
+    apt-get update && apt-get install -y dnsutils \
+;fi
+
+###########################################################################
+# The Fuck:
+###########################################################################
+
+USER root
+
+ARG INSTALL_THEFUCK=true
+
+RUN if [ ${INSTALL_DNSUTILS} = true ]; then \
+    pip3 install thefuck && \
+    if [ ${SHELL_OH_MY_ZSH} = true ]; then \
+      echo "$(thefuck --alias)" >> /home/laradock/.zshrc \
+    ;fi \
+;fi
+
 
 #
 #--------------------------------------------------------------------------

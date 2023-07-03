@@ -1,30 +1,22 @@
-x-share:
-  common: &default-common
-    build:
-        context: ./workspace
-        args:
-          - LARADOCK_PHP_VERSION=8.1
-
 services:
 
 ### Workspace Utilities ##################################
-    workspace:
-      <<: *default-common
-      image: ttungbmt/laradock-workspace:8.1
-   
+  workspace-81:
+    extends:
+      file: docker-compose.yml
+      service: workspace
+    image: ttungbmt/laradock-workspace:8.1
+    build:
+      context: ./workspace
+      args:
+        - LARADOCK_PHP_VERSION=8.1
+
 ### PHP-FPM ##############################################
-    php-fpm:
-      <<: *default-common
-      image: ttungbmt/laradock-php-fpm:8.1
-    
-
-### PHP Worker ############################################
-    php-worker:
-      <<: *default-common
-      image: ttungbmt/laradock-php-worker:8.1
-     
-
-### Laravel Horizon ############################################
-    laravel-horizon:
-      <<: *default-common
-      image: ttungbmt/laradock-laravel-horizon:8.1
+  php-fpm-81:
+    extends:
+      file: docker-compose.yml
+      service: php-fpm
+    image: ttungbmt/laradock-php-fpm:8.1
+    build:
+      args:
+        - LARADOCK_PHP_VERSION=8.1
